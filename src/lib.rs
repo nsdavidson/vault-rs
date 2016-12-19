@@ -119,6 +119,15 @@ mod tests {
     }
 
     #[test]
+    fn it_can_query_secrets_with_backend() {
+        let client = Client::new(HOST, TOKEN).unwrap();
+        let res = client.set_secret_with_backend("hello_query", "world", "cubbyhole");
+        assert!(res.is_ok());
+        let res = client.get_secret_with_backend("hello_query", "cubbyhole").unwrap();
+        assert_eq!(res, "world");
+    }
+
+    #[test]
     fn it_can_write_secrets_with_newline() {
         let client = Client::new(HOST, TOKEN).unwrap();
 

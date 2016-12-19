@@ -750,6 +750,27 @@ impl<T> VaultClient<T>
         Ok(())
     }
 
+    ///
+    /// Saves a secret to a specified backend
+    ///
+    /// ```
+    /// # extern crate hashicorp_vault as vault;
+    /// # use vault::Client;
+    /// # fn main() {
+    /// let host = "http://127.0.0.1:8200";
+    /// let token = "test12345";
+    /// let client = Client::new(host, token).unwrap();
+    /// let res = client.set_secret_with_backend("hello_set", "world", "cubbyhole");
+    /// assert!(res.is_ok());
+    /// # }
+    /// ```
+    pub fn set_secret_with_backend(&self, key: &str, value: &str, backend: &str) -> Result<()> {
+        let _ = try!(self.post(&format!("/v1/{}/{}", backend, key)[..],
+                               Some(&format!("{{\"value\": \"{}\"}}", self.escape(value))[..]),
+                               None));
+        Ok(())
+    }
+
     fn escape(&self, input: &str) -> String {
         input.replace("\n", "\\n")
     }
@@ -773,6 +794,32 @@ impl<T> VaultClient<T>
     /// ```
     pub fn get_secret(&self, key: &str) -> Result<String> {
         let mut res = try!(self.get(&format!("/v1/secret/{}", key)[..], None));
+        let decoded: VaultResponse<SecretData> = try!(parse_vault_response(&mut res));
+        match decoded.data {
+            Some(data) => Ok(data.value),
+            _ => Err(Error::Vault(format!("No secret found in response: `{:#?}`", decoded))),
+        }
+    }
+
+    ///
+    /// Fetches a saved secret from a specified backend
+    ///
+    /// ```
+    /// # extern crate hashicorp_vault as vault;
+    /// # use vault::Client;
+    /// # fn main() {
+    /// let host = "http://127.0.0.1:8200";
+    /// let token = "test12345";
+    /// let client = Client::new(host, token).unwrap();
+    /// let res = client.set_secret("hello_get", "world");
+    /// assert!(res.is_ok());
+    /// let res = client.get_secret("hello_get");
+    /// assert!(res.is_ok());
+    /// assert_eq!(res.unwrap(), "world");
+    /// # }
+    /// ```
+    pub fn get_secret_with_backend(&self, key: &str, backend: &str) -> Result<String> {
+        let mut res = try!(self.get(&format!("/v1/{}/{}", backend, key)[..], None));
         let decoded: VaultResponse<SecretData> = try!(parse_vault_response(&mut res));
         match decoded.data {
             Some(data) => Ok(data.value),
